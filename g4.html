@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>G4</title>
+
+<style>
+
+.g4-title {
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    display: block;
+    width: 810px;
+    background-color: black;
+    color: white;
+    font-family: Verdana;
+    font-size: 20px;
+}
+.g4-canvas {
+    padding-left: 0;
+    padding-right: 0;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+    width: 810px;
+    height: 810px;
+    background-color: lightgrey;
+}
+.g4-action {
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    display: block;
+    width: 810px;
+    background-color: gold;
+    color: red;
+    font-family: Verdana;
+}
+.g4-social {
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    display: block;
+    width: 810px;
+    background-color: lightblue;
+    color: blue;
+    font-family: Verdana;
+}
+.g4-ad {
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 50px;
+    padding-bottom: 50px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    display: block;
+    width: 810px;
+    background-color: lightgreen;
+    color: green;
+    font-size: 24px;
+}
+</style>
+
+<script>
+
+var step = 0;
+
+function drawPlanet(x, y, r, c) {
+	g4ctx.beginPath();
+	g4ctx.arc(x, y, r, 0, Math.PI*2);
+	g4ctx.fillStyle = c;
+	g4ctx.fill();
+	g4ctx.closePath();
+}
+
+function nextStep() {
+    g4ctx.clearRect(0, 0, g4canvas.width, g4canvas.height);
+    step += 5;
+    if (step > 300) step = 20;
+    drawPlanet(300+2*step, 200+step, 40, "#FF0000");
+    drawPlanet(300+step, 300+2*step, 30, "#00FF00");
+    drawPlanet(600-2*step, 450-step, 20, "#0000FF");
+    //drawPlanet(500-step, 700-2*step, 50, "#FFFF00");
+}
+
+function DoIt() {
+	setInterval(nextStep, 40);
+}
+
+</script>
+
+</head>
+
+<body onload="DoIt()">
+
+<div class="g4-title">
+	<h1 align="center">play    Gr4vItY    vote</h1>
+</div>
+
+<div class="g4-canvas">
+	<canvas id="g4" width="800" height="800" style="border:5px solid #000000;"></canvas>
+</div>
+
+<div class="g4-action">
+	<h1 align="center">NEW SIMULATION / NEXT VOTE</h1>
+</div>
+
+<div class="g4-social">
+	<h1 align="center">POST / LIKE</h1>
+</div>
+
+<div class="g4-ad">
+	<h1 align="center">COMMERCIAL</h1>
+</div>
+
+<script>
+	var g4canvas = document.getElementById("g4");
+	var g4ctx = g4canvas.getContext("2d");
+</script>
+
+</body>
+
+</html>
