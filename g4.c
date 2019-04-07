@@ -28,8 +28,9 @@ double	x, y, vx, vy;
 //	GLOBALS
 //
 
+#define NB_MAX_FRAMES	65536
 PLANET	planet[6];
-FRAME	frame[8192];
+FRAME	frame[NB_MAX_FRAMES];
 int	red[6], green[6], blue[6];
 
 //--------------------------------
@@ -105,19 +106,19 @@ double distance(FRAME* f1, FRAME* f2)
 
 double angle(int x1, int y1, int x2, int y2, int vx1, int vy1, double* vr)
 {
-double a1 = atan2(y2 - y1, x2 - x1);
-double a2 = atan2(vy1, vx1);
+double ar = atan2(y2 - y1, x2 - x1);
+double av = atan2(vy1, vx1);
 
-	*vr = cos(a1-a2) * sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
+	*vr = cos(ar-av) * sqrt(vx1*vx1 + vy1*vy1);
 
-	return a1-a2;
+	return ar-av;
 }
 
 bool run_simulation(int planets, int size, int mmin, int mmax, int vmin, int vmax, double gravity, double rebound,
 	SIMULATION* simulation)
 {
 int	offset = 100, first_frame, last_frame, nf, m1, m2;
-double	mgx, mgy, radius, r1, r2, d, a1, a2, vr1, vr2, qvr1, qvr2;
+double	mgx, mgy, radius, r1, r2, d, a1, a2, vr1, vr2, qvr1, qvr2, g1, g1x, g1y, g2, g2x, g2y;
 bool	stop = false;
 
 	simulation->planets = planets;
@@ -218,8 +219,37 @@ a2 = angle(frame[f2].x, frame[f2].y, frame[f1].x, frame[f1].y, frame[f2].vx, fra
 						qvr1 = m1 * vr1;
 						qvr2 = m2 * vr2;
 
-printf("BC e = %4d  %d/%4d - %d/%4d  (%5.2f < %5.2f + %5.2f)  [ %6.2f %6.2f ]\n",
-	simulation->epochs, frame[f1].pid, m1, frame[f2].pid, m2, d, r1, r2, vr1, vr2);
+printf("PC e = %4d  %d/%4d - %d/%4d  (%5.2f < %5.2f + %5.2f)  a1 = %5.2f  a2 = %5.2f  [ %5.2f %5.2f ]\n",
+	simulation->epochs, frame[f1].pid, m1, frame[f2].pid, m2, d, r1, r2, a1, a2, vr1, vr2);
+
+printf("PC x1 = %5.2f  y1 = %5.2f   x2 = %5.2f  y2 = %5.2f\n", frame[f1].x, frame[f1].y, frame[f2].x, frame[f2].y);
+
+						//g1 = rebound * qvr2 / (100.0 * (m1+m2));
+						g1x = (vr1 * (frame[f1].x - frame[f2].x)) / d;
+						g1y = (vr1 * (frame[f1].y - frame[f2].y)) / d;
+						//g2 = rebound * m1 * vr1 / (100.0 * (m1+m2));
+						g2x = (vr2 * (frame[f1].x - frame[f2].x)) / d;
+						g2y = (vr2 * (frame[f1].y - frame[f2].y)) / d;
+
+printf("PC g1x = %5.2f  g1y = %5.2f   g2x = %5.2f  g2y = %5.2f\n", g1x, g1y, g2x, g2y);
+
+printf("before v1x = %6.2f  v1y = %6.2f   v2x = %6.2f  v2y = %6.2f\n", frame[f1].vx, frame[f1].vy, frame[f2].vx, frame[f2].vy);
+
+						frame[f1].vx = (m1 * frame[f1].vx + 0.01 * rebound * m2 * g2x) / (m1 + m2);
+						frame[f1].vy = (m1 * frame[f1].vy + 0.01 * rebound * m2 * g2y) / (m1 + m2);
+
+						frame[f2].vx = (m2 * frame[f2].vx + 0.01 * rebound * m1 * g1x) / (m1 + m2);
+						frame[f2].vy = (m2 * frame[f2].vy + 0.01 * rebound * m1 * g1y) / (m1 + m2);
+printf("after  v1x = %6.2f  v1y = %6.2f   v2x = %6.2f  v2y = %6.2f\n", frame[f1].vx, frame[f1].vy, frame[f2].vx, frame[f2].vy);
+
+
+						frame[f1].x += frame[f1].vx;
+						frame[f1].y += frame[f1].vy;
+
+						frame[f2].x += frame[f2].vx;
+						frame[f2].y += frame[f2].vy;
+
+exit(0);
 
 						simulation->pc++;
 					}
@@ -228,7 +258,7 @@ printf("BC e = %4d  %d/%4d - %d/%4d  (%5.2f < %5.2f + %5.2f)  [ %6.2f %6.2f ]\n"
 		}
 
 		// end conditions
-		if (planets == 1 || simulation->frames > 8000 || simulation->epochs > 2000)
+		if (planets == 1 || simulation->frames >= NB_MAX_FRAMES || simulation->epochs > 10000)
 		{
 			stop = true;
 		}
@@ -262,6 +292,15 @@ SIMULATION simulation;
 		m2 = atoi(argv[4]);
 	if (argc > 5)
 		v2 = atoi(argv[5]);
+/*
+double vr1, vr2;
+double a1 = angle(1, 3, 3, 2, 1, 1, &vr1);
+double a2 = angle(3, 2, 1, 3, 0, 1, &vr2);
+printf("  a1 = %5.2f    a2 = %5.2f\n", a1, a2);
+printf("cos1 = %5.2f  cos2 = %5.2f\n", cos(a1), cos(a2));
+printf(" vr1 = %5.2f   vr2 = %5.2f\n", vr1, vr2);
+exit(0);
+*/
 
 	if (run_simulation(planets, size, m1, m2, v1, v2, gravity, rebound, &simulation))
 		printf("%d epochs, %d frames  (%d bc) (%d pc)\n",
