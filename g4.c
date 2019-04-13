@@ -116,7 +116,7 @@ double av = atan2(vy1, vx1);
 	return ar-av;
 }
 
-void bc(int m1, int m2, double d, FRAME* f1, FRAME* f2, double rebound)
+void bc(int m1, int m2, double d, FRAME* f1, FRAME* f2, double rebound, double transfer)
 {
     double vr1, vr2;
     
@@ -139,11 +139,13 @@ void bc(int m1, int m2, double d, FRAME* f1, FRAME* f2, double rebound)
 
 //printf("before v1x = %6.2f  v1y = %6.2f   v2x = %6.2f  v2y = %6.2f\n", f1->vx, f1->vy, f2->vx, f2->vy);
 
-    f1->vx = (m1 * f1->vx + 0.01 * rebound * m2 * g2x) / (m1 + m2);
-	f1->vy = (m1 * f1->vy + 0.01 * rebound * m2 * g2y) / (m1 + m2);
+    	f1->vx = (m1 * f1->vx + (transfer * m2 * g2x - rebound * m1 * g1x) / 100.0) / (m1 + m2);
+	f1->vy = (m1 * f1->vy + (transfer * m2 * g2y - rebound * m1 * g1y) / 100.0) / (m1 + m2);
 
-	f2->vx = (m2 * f2->vx + 0.01 * rebound * m1 * g1x) / (m1 + m2);
-	f2->vy = (m2 * f2->vy + 0.01 * rebound * m1 * g1y) / (m1 + m2);
+    	f2->vx = (m2 * f2->vx + (transfer * m1 * g1x - rebound * m2 * g2x) / 100.0) / (m1 + m2);
+	f2->vy = (m2 * f2->vy + (transfer * m1 * g1y - rebound * m2 * g2y) / 100.0) / (m1 + m2);
+	//f2->vx = (m2 * f2->vx + 0.01 * rebound * m1 * g1x) / (m1 + m2);
+	//f2->vy = (m2 * f2->vy + 0.01 * rebound * m1 * g1y) / (m1 + m2);
     
 //printf("after  v1x = %6.2f  v1y = %6.2f   v2x = %6.2f  v2y = %6.2f\n", f1->vx, f1->vy, f2->vx, f2->vy);
 
@@ -160,7 +162,7 @@ typedef struct
     double x1, y1, vx1, vy1, x2, y2, vx2, vy2;
 } COALESCE;
 
-bool run_simulation(int planets, int size, int mmin, int mmax, int vmin, int vmax, double gravity, double rebound,
+bool run_simulation(int planets, int size, int mmin, int mmax, int vmin, int vmax, double gravity, double rebound, double transfer,
 	SIMULATION* simulation)
 {
 int	offset = 100, first_frame, last_frame, nf, m1, m2, p1, p2;
@@ -181,8 +183,8 @@ COALESCE    coalesce[8];
 	simulation->frames = planets;
 
 	simulation->ec0 = ec(planets, &frame[0]);
-	printf("%d planets, gravity = %5.2f, rebound = %5.2f, mass = [ %d - %d ], v0 = [ %d - %d ], ec0 = %d K\n",
-		planets, gravity, rebound, mmin, mmax, vmin, vmax, simulation->ec0/1000);
+	printf("%d planets, gravity = %5.2f, rebound = %5.2f, transfer = %5.2f, mass = [ %d - %d ], v0 = [ %d - %d ], ec0 = %d K\n",
+		planets, gravity, rebound, transfer, mmin, mmax, vmin, vmax, simulation->ec0/1000);
 
 	first_frame = 0;
 	last_frame = planets;
@@ -268,7 +270,7 @@ COALESCE    coalesce[8];
 printf("COLLISION    e = %4d  %4d/%d and %4d/%d\n",
        simulation->epochs, f1, frame[f1].pid, f2, frame[f2].pid);
 
-                        bc(m1, m2, d, &frame[f1], &frame[f2], rebound);
+                        bc(m1, m2, d, &frame[f1], &frame[f2], rebound, transfer);
                         d = distance(&frame[f1], &frame[f2]);
                         if (d < r1 + r2) // coalescence
                         {
@@ -344,6 +346,8 @@ printf("COALESCENCE  e = %4d  %4d/%d and %4d/%d   np = %d\n",
 			stop = true;
 		}
 	}
+	simulation->ecf = ec(planets, &frame[first_frame]);
+printf("ecf = %d K\n", simulation->ecf / 1000);
 
 	return true;
 }
@@ -354,7 +358,7 @@ printf("COALESCENCE  e = %4d  %4d/%d and %4d/%d   np = %d\n",
 int main(int argc, char* argv[])
 {
 int	planets = 3, size = 800, m1 = 100, m2 = 900, v1 = 10, v2 = 30;
-double	ec0 = 0.0, gravity = 5.0, rebound = 80.0;
+double	ec0 = 0.0, gravity = 5.0, rebound = 80.0, transfer= 80.0;
 SIMULATION simulation;
 
 	red[0] = 255; red[1] = 0; red[2] = 0; red[3] = 255; red[4] = 255; red[5] = 0;
@@ -370,9 +374,11 @@ SIMULATION simulation;
 	if (argc > 3)
 		rebound = atof(argv[3]);
 	if (argc > 4)
-		m2 = atoi(argv[4]);
+		transfer = atof(argv[4]);
 	if (argc > 5)
-		v2 = atoi(argv[5]);
+		m2 = atoi(argv[5]);
+	if (argc > 6)
+		v2 = atoi(argv[6]);
 /*
 double vr1, vr2;
 double a1 = angle(1, 3, 3, 2, 1, 1, &vr1);
@@ -397,7 +403,7 @@ f2.vy = 0;
     //bc(1, 1, 2.0, &f1, &f2, 80.0);
     //exit(0);
                         
-	if (run_simulation(planets, size, m1, m2, v1, v2, gravity, rebound, &simulation))
+	if (run_simulation(planets, size, m1, m2, v1, v2, gravity, rebound, transfer, &simulation))
 		printf("%d epochs, %d frames  (%d bc) (%d pc)\n",
 			simulation.epochs, simulation.frames, simulation.bc, simulation.pc);
 	else
