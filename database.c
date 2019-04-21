@@ -364,11 +364,37 @@ double pgGetSum(PGconn *pgConn, const char *pColumn, const char *ptable, const c
 
 int insertSimulation(PGconn *pgConn, int epochs, int frames, double gravity, double rebound, double transfer)
 {
-return 0;
+	int nbc = 0, sid = -1;
+	unsigned long long uts = getCurrentUTS();
+
+	if (pgBeginTransaction(pgConn))
+	{
+		sid = pgGetSequo(pgConn, "g4s.simulation_sequo");
+		if (sid < 0)
+		{
+			pgRollbackTransaction(pgConn);
+		}
+		else
+		{
+			pgExecFormat(pgConn, &nbc, "insert into g4s.simulation values (%d, %llu, %d, %d, %6.2f, %6.2f, %6.2f, 0, 0)",
+				sid, uts, epochs, frames, gravity, rebound, transfer);
+			if (nbc == 1)
+				pgCommitTransaction(pgConn);
+			else
+			{
+				pgRollbackTransaction(pgConn);
+				sid = -1;
+			}
+		}
+	}
+	return sid;
 }
 
 bool insertFrame(PGconn *pgConn, int sid, int epoch, int pid, int x, int y, double radius, const char *color)
 {
-return true;
+int nbc = 0;
+	pgExecFormat(pgConn, &nbc, "insert into g4s.frame values (%d, %d, %d, %d, %d, %6.2f, '%s')",
+		sid, epoch, pid, x, y, radius, color);
+	return nbc == 1;
 }
 

@@ -7,10 +7,12 @@
 #include <math.h>
 #include <time.h>
 
+#include "database.h"
+
 typedef struct
 {
 int     epochs, frames, planets, ec0, ecf, bc, pc;
-double  gravity, rebound;
+double  gravity, rebound, transfer;
 } SIMULATION;
 
 typedef struct
@@ -123,33 +125,19 @@ void bc(int m1, int m2, double d, FRAME* f1, FRAME* f2, double rebound, double t
     double a1 = angle(f1->x, f1->y, f2->x, f2->y, f1->vx, f1->vy, &vr1);
     double a2 = angle(f2->x, f2->y, f1->x, f1->y, f2->vx, f2->vy, &vr2);
 
-//printf("PC %d/%4d - %d/%4d   a1 = %5.2f  a2 = %5.2f  [ %5.2f  %5.2f ]\n",
-//        f1->pid, m1, f2->pid, m2, 180.0*a1/3.14159, 180.0*a2/3.14159, vr1, vr2);
-
-//printf("PC x1 = %5.2f  y1 = %5.2f   x2 = %5.2f  y2 = %5.2f\n", f1->x, f1->y, f2->x, f2->y);
-
-	//g1 = rebound * qvr2 / (100.0 * (m1+m2));
 	double g1x = (vr1 * (f2->x - f1->x)) / d;
 	double g1y = (vr1 * (f2->y - f1->y)) / d;
-	//g2 = rebound * m1 * vr1 / (100.0 * (m1+m2));
+
 	double g2x = (vr2 * (f1->x - f2->x)) / d;
 	double g2y = (vr2 * (f1->y - f2->y)) / d;
-
-//printf("PC g1x = %5.2f  g1y = %5.2f   g2x = %5.2f  g2y = %5.2f\n", g1x, g1y, g2x, g2y);
-
-//printf("before v1x = %6.2f  v1y = %6.2f   v2x = %6.2f  v2y = %6.2f\n", f1->vx, f1->vy, f2->vx, f2->vy);
 
     	f1->vx = (m1 * f1->vx + (transfer * m2 * g2x - rebound * m1 * g1x) / 100.0) / (m1 + m2);
 	f1->vy = (m1 * f1->vy + (transfer * m2 * g2y - rebound * m1 * g1y) / 100.0) / (m1 + m2);
 
     	f2->vx = (m2 * f2->vx + (transfer * m1 * g1x - rebound * m2 * g2x) / 100.0) / (m1 + m2);
 	f2->vy = (m2 * f2->vy + (transfer * m1 * g1y - rebound * m2 * g2y) / 100.0) / (m1 + m2);
-	//f2->vx = (m2 * f2->vx + 0.01 * rebound * m1 * g1x) / (m1 + m2);
-	//f2->vy = (m2 * f2->vy + 0.01 * rebound * m1 * g1y) / (m1 + m2);
-    
-//printf("after  v1x = %6.2f  v1y = %6.2f   v2x = %6.2f  v2y = %6.2f\n", f1->vx, f1->vy, f2->vx, f2->vy);
 
-    f1->x += f1->vx;
+	f1->x += f1->vx;
 	f1->y += f1->vy;
 
 	f2->x += f2->vx;
@@ -173,6 +161,7 @@ COALESCE    coalesce[8];
 	simulation->planets = planets;
 	simulation->gravity = gravity;
 	simulation->rebound = rebound;
+	simulation->transfer = transfer;
 	simulation->bc = 0;
 	simulation->pc = 0;
 
@@ -352,6 +341,15 @@ printf("ecf = %d K\n", simulation->ecf / 1000);
 	return true;
 }
 
+int save_simulation(PGconn *pgConn, SIMULATION *ps)
+{
+int sid = insertSimulation(pgConn, ps->epochs, ps->frames, ps->gravity, ps->rebound, ps->transfer);
+
+	for (int f = 0 ; f < ps->frames ; f++)
+		insertFrame(pgConn, sid, frame[f].epoch, frame[f].pid, frame[f].x, frame[f].y, sqrt(planet[frame[f].pid].mass), "#AAFF77");
+	return sid;
+}
+
 //
 // main
 //
@@ -360,6 +358,8 @@ int main(int argc, char* argv[])
 int	planets = 3, size = 800, m1 = 100, m2 = 900, v1 = 10, v2 = 30;
 double	ec0 = 0.0, gravity = 5.0, rebound = 80.0, transfer= 80.0;
 SIMULATION simulation;
+char buffer[2014];
+PGconn *pgConn = NULL;
 
 	red[0] = 255; red[1] = 0; red[2] = 0; red[3] = 255; red[4] = 255; red[5] = 0;
 	green[0] = 0; green[1] = 255; green[2] = 0; green[3] = 255; green[4] = 0; green[5] = 255;
@@ -379,33 +379,17 @@ SIMULATION simulation;
 		m2 = atoi(argv[5]);
 	if (argc > 6)
 		v2 = atoi(argv[6]);
-/*
-double vr1, vr2;
-double a1 = angle(1, 3, 3, 2, 1, 1, &vr1);
-double a2 = angle(3, 2, 1, 3, 0, 1, &vr2);
-printf("  a1 = %5.2f    a2 = %5.2f\n", a1, a2);
-printf("cos1 = %5.2f  cos2 = %5.2f\n", cos(a1), cos(a2));
-printf(" vr1 = %5.2f   vr2 = %5.2f\n", vr1, vr2);
-exit(0);
-*/
 
-FRAME f1, f2;
-
-f1.x = 1;
-f1.y = 1;
-f1.vx = -1;
-f1.vy = 1;
-f2.x = 3;
-f2.y = 1;
-f2.vx = -1;
-f2.vy = 0;
-
-    //bc(1, 1, 2.0, &f1, &f2, 80.0);
-    //exit(0);
+	pgConn = pgOpenConn("g4", "g4", "", buffer);
+	printf("database connection     = %p\n", pgConn);
                         
 	if (run_simulation(planets, size, m1, m2, v1, v2, gravity, rebound, transfer, &simulation))
+	{
 		printf("%d epochs, %d frames  (%d bc) (%d pc)\n",
 			simulation.epochs, simulation.frames, simulation.bc, simulation.pc);
+		int sid = save_simulation(pgConn, &simulation);
+		printf("sid = %d\n", sid);
+	}
 	else
 		printf("ERROR\n");
 }
