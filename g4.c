@@ -166,6 +166,8 @@ COALESCE    coalesce[8];
 	simulation->pc = 0;
 
 	init_planets(planets, mmin, mmax, &planet[0]);
+//for (int p = 0 ; p < planets ; p++)
+//printf("p%d : %3d %3d %3d\n", p, planet[p].red, planet[p].green, planet[p].blue);
 	init_frames(planets, offset, size, vmin, vmax, &frame[0]);
 
 	simulation->epochs = 1;
@@ -341,12 +343,30 @@ printf("ecf = %d K\n", simulation->ecf / 1000);
 	return true;
 }
 
+char hexa[] = "0123456789ABCDEF";
+
+char *scolor(char *buffer, int color)
+{
+	sprintf(buffer, "%c%c", hexa[color/16], hexa[color%16]);
+	return buffer;
+}
+
+char *srgb(char *buffer, int red, int green, int blue)
+{
+char	bufr[4], bufg[4], bufb[4];
+
+	sprintf(buffer, "#%s%s%s", scolor(bufr, red), scolor(bufg, green), scolor(bufb, blue));
+	return buffer;
+}
+
 int save_simulation(PGconn *pgConn, SIMULATION *ps)
 {
+char	buffer[16];
 int sid = insertSimulation(pgConn, ps->epochs, ps->frames, ps->gravity, ps->rebound, ps->transfer);
 
 	for (int f = 0 ; f < ps->frames ; f++)
-		insertFrame(pgConn, sid, frame[f].epoch, frame[f].pid, frame[f].x, frame[f].y, sqrt(planet[frame[f].pid].mass), "#AAFF77");
+		insertFrame(pgConn, sid, frame[f].epoch, frame[f].pid, frame[f].x, frame[f].y, sqrt(planet[frame[f].pid].mass),
+			srgb(buffer, planet[frame[f].pid].red, planet[frame[f].pid].green, planet[frame[f].pid].blue));
 	return sid;
 }
 
