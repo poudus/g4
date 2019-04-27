@@ -81,7 +81,9 @@
 
 <script>
 
+var intid = 0;
 var step = 0;
+var simulation = null;
 
 function drawPlanet(x, y, r, c) {
 	g4ctx.beginPath();
@@ -93,16 +95,44 @@ function drawPlanet(x, y, r, c) {
 
 function nextStep() {
     g4ctx.clearRect(0, 0, g4canvas.width, g4canvas.height);
-    step += 5;
-    if (step > 300) step = 20;
-    drawPlanet(300+2*step, 200+step, 40, "#FF0000");
-    drawPlanet(300+step, 300+2*step, 30, "#00FF00");
-    drawPlanet(600-2*step, 450-step, 20, "#0000FF");
+    var ep0 = 0;
+    if (step < simulation.length) {
+	$f0 = simulation[step];
+	ep0 = $f0[1];
+    }
+    var epoch = ep0;
+    while (epoch == ep0) {
+    if (step < simulation.length) {
+	$frame = simulation[step];
+    	drawPlanet($frame[3], $frame[4], $frame[5], $frame[6]);
+	epoch = $frame[1];
+	step++;
+    } else {
+      document.getElementById("ads").innerHTML = "END";
+	clearInterval(intid);
+	epoch = -1;
+    }
+    }
     //drawPlanet(500-step, 700-2*step, 50, "#FFFF00");
 }
 
 function DoIt() {
-	setInterval(nextStep, 40);
+  var http_request = new XMLHttpRequest();
+  http_request.onreadystatechange = function() {
+    if (http_request.readyState == 4 && http_request.status == 200) {
+	
+      simulation = JSON.parse(http_request.responseText);
+	if (simulation != null) {
+      document.getElementById("ads").innerHTML = "frames = " + simulation.length;
+	} else {
+      document.getElementById("ads").innerHTML = "NULL";
+	}
+    }
+  };
+  http_request.open("GET", "http://192.168.0.48/g4/simulation.php?sid=76", true);
+  http_request.send();
+
+	intid = setInterval(nextStep, 25);
 }
 
 </script>
@@ -112,7 +142,7 @@ function DoIt() {
 <body onload="DoIt()">
 
 <div class="g4-title">
-	<h1 align="center">play    Gr4vItY    vote</h1>
+	<h1 align="center">Gr4vItY</h1>
 </div>
 
 <div class="g4-canvas">
@@ -120,15 +150,15 @@ function DoIt() {
 </div>
 
 <div class="g4-action">
-	<h1 align="center">NEW SIMULATION / NEXT VOTE</h1>
+	<h1 align="center">NEXT</h1>
 </div>
 
 <div class="g4-social">
-	<h1 align="center">POST / LIKE</h1>
+	<h1 align="center">LIKE</h1>
 </div>
 
 <div class="g4-ad">
-	<h1 align="center">COMMERCIAL</h1>
+	<h1 id="ads" align="center">ADS</h1>
 </div>
 
 <script>

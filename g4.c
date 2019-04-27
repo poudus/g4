@@ -72,10 +72,14 @@ FRAME* init_frame(int pid, int epoch, double x, double y, double vx, double vy, 
 
 void init_frames(int frames, int offset, int size, int v1, int v2, FRAME* frame)
 {
+	int dx = 1, dy = 1;
+
 	for (int f = 0 ; f < frames ; f++)
 	{
+		dx = rand() % 2 == 1 ? 1 : -1;
+		dy = rand() % 2 == 1 ? 1 : -1;
 		init_frame(f, 0, offset + rand() % (size-2*offset), offset + rand() % (size-2*offset),
-			v1 + rand() % (v2 - v1 + 1), v1 + rand() % (v2 - v1 + 1), frame);
+			dx * (v1 + rand() % (v2 - v1 + 1)), dy * (v1 + rand() % (v2 - v1 + 1)), frame);
 		frame++;
 	}
 }
@@ -92,13 +96,15 @@ double ec = 0.0;
 void	attraction(int pid, int x, int y, int frames, FRAME* frame, double *mgx, double* mgy)
 {
 	*mgx = *mgy = 0.0;
+	double d2 = 0.0;
 
 	for (int f = 0 ; f < frames ; f++)
 	{
 		if (frame[f].pid != pid)
 		{
-			*mgx += planet[frame[f].pid].mass / (x-frame[f].x)*(x-frame[f].x);
-			*mgy += planet[frame[f].pid].mass / (y-frame[f].y)*(y-frame[f].y);
+			d2 = (x-frame[f].x)*(x-frame[f].x) + (y-frame[f].y)*(y-frame[f].y);
+			*mgx += (frame[f].x - x) * planet[frame[f].pid].mass / d2;
+			*mgy += (frame[f].y - y) * planet[frame[f].pid].mass / d2;
 		}
 	}
 }
@@ -121,7 +127,7 @@ double av = atan2(vy1, vx1);
 void bc(int m1, int m2, double d, FRAME* f1, FRAME* f2, double rebound, double transfer)
 {
     double vr1, vr2;
-    
+
     double a1 = angle(f1->x, f1->y, f2->x, f2->y, f1->vx, f1->vy, &vr1);
     double a2 = angle(f2->x, f2->y, f1->x, f1->y, f2->vx, f2->vy, &vr2);
 
@@ -263,7 +269,7 @@ printf("COLLISION    e = %4d  %4d/%d and %4d/%d\n",
 
                         bc(m1, m2, d, &frame[f1], &frame[f2], rebound, transfer);
                         d = distance(&frame[f1], &frame[f2]);
-                        if (d < r1 + r2) // coalescence
+                        if (1.03 * d < r1 + r2) // coalescence
                         {
                             coalesce[nb_coalesce].m1 = m1;
                             coalesce[nb_coalesce].m2 = m2;
@@ -296,7 +302,7 @@ printf("COALESCENCE  e = %4d  %4d/%d and %4d/%d   np = %d\n",
         {
             FRAME   tmpf[16];
             int     nbtmpf = 0;
-            
+
             for (int f = first_frame ; f < last_frame ; f++)
             {
                 if (frame[f].np == 0)
@@ -313,13 +319,13 @@ printf("COALESCENCE  e = %4d  %4d/%d and %4d/%d   np = %d\n",
                 frame[last_frame+cf].epoch = simulation->epochs;
                 frame[last_frame+cf].pid = coalesce[cf].np;
                 frame[last_frame+cf].np = 0;
-                
+
                 frame[last_frame+cf].x = (coalesce[cf].m1 * coalesce[cf].x1 + coalesce[cf].m2 * coalesce[cf].x2) / (coalesce[cf].m1 + coalesce[cf].m2);
                 frame[last_frame+cf].y = (coalesce[cf].m1 * coalesce[cf].y1 + coalesce[cf].m2 * coalesce[cf].y2) / (coalesce[cf].m1 + coalesce[cf].m2);
-                
+
                 frame[last_frame+cf].vx = (coalesce[cf].m1 * coalesce[cf].vx1 + coalesce[cf].m2 * coalesce[cf].vx2) / (coalesce[cf].m1 + coalesce[cf].m2);
                 frame[last_frame+cf].vy = (coalesce[cf].m1 * coalesce[cf].vy1 + coalesce[cf].m2 * coalesce[cf].vy2) / (coalesce[cf].m1 + coalesce[cf].m2);
-                
+
                 last_frame++;
             }
             planets = nbtmpf + nb_coalesce;
@@ -375,7 +381,7 @@ int sid = insertSimulation(pgConn, ps->epochs, ps->frames, ps->gravity, ps->rebo
 //
 int main(int argc, char* argv[])
 {
-int	planets = 3, size = 800, m1 = 100, m2 = 900, v1 = 10, v2 = 30;
+int	planets = 3, size = 800, m1 = 100, m2 = 900, v1 = 4, v2 = 10;
 double	ec0 = 0.0, gravity = 5.0, rebound = 80.0, transfer= 80.0;
 SIMULATION simulation;
 char buffer[2014];
@@ -383,7 +389,7 @@ PGconn *pgConn = NULL;
 
 	red[0] = 255; red[1] = 0; red[2] = 0; red[3] = 255; red[4] = 255; red[5] = 0;
 	green[0] = 0; green[1] = 255; green[2] = 0; green[3] = 255; green[4] = 0; green[5] = 255;
-	blue[0] = 0; blue[1] = 0; blue[2] = 255; green[3] = 0; green[4] = 255; green[5] = 255;
+	blue[0] = 0; blue[1] = 0; blue[2] = 255; blue[3] = 0; blue[4] = 255; blue[5] = 255;
 
 	srand(time(NULL));
 
@@ -402,7 +408,7 @@ PGconn *pgConn = NULL;
 
 	pgConn = pgOpenConn("g4", "g4", "", buffer);
 	printf("database connection     = %p\n", pgConn);
-                        
+
 	if (run_simulation(planets, size, m1, m2, v1, v2, gravity, rebound, transfer, &simulation))
 	{
 		printf("%d epochs, %d frames  (%d bc) (%d pc)\n",
@@ -413,4 +419,3 @@ PGconn *pgConn = NULL;
 	else
 		printf("ERROR\n");
 }
-
