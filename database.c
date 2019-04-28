@@ -362,7 +362,7 @@ double pgGetSum(PGconn *pgConn, const char *pColumn, const char *ptable, const c
 //	SIMULATION
 //====================================================
 
-int insertSimulation(PGconn *pgConn, int epochs, int frames, double gravity, double rebound, double transfer)
+int insertSimulation(PGconn *pgConn, int epochs, int frames, double gravity, double rebound, double transfer, int mmin, int mmax, int vmin, int vmax, int bc, int pc)
 {
 	int nbc = 0, sid = -1;
 	unsigned long long uts = getCurrentUTS();
@@ -376,8 +376,8 @@ int insertSimulation(PGconn *pgConn, int epochs, int frames, double gravity, dou
 		}
 		else
 		{
-			pgExecFormat(pgConn, &nbc, "insert into g4s.simulation values (%d, %llu, %d, %d, %6.2f, %6.2f, %6.2f, 0, 0)",
-				sid, uts, epochs, frames, gravity, rebound, transfer);
+			pgExecFormat(pgConn, &nbc, "insert into g4s.simulation values (%d, %llu, %d, %d, %6.2f, %6.2f, %6.2f, %d, %d, %d, %d, %d, %d, 0, 0)",
+				sid, uts, epochs, frames, gravity, rebound, transfer, mmin, mmax, vmin, vmax, bc, pc);
 			if (nbc == 1)
 				pgCommitTransaction(pgConn);
 			else

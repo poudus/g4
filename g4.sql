@@ -11,6 +11,12 @@ frames int not null,
 gravity numeric(6,2) not null,
 rebound numeric(6,2) not null,
 transfer numeric(6,2) not null,
+mmin int not null,
+mmax int not null,
+vmin int not null,
+vmax int not null,
+bc int not null,
+pc int not null,
 views int not null,
 likes int not null
 );

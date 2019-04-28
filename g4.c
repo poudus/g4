@@ -11,7 +11,7 @@
 
 typedef struct
 {
-int     epochs, frames, planets, ec0, ecf, bc, pc;
+int     epochs, frames, planets, ec0, ecf, bc, pc, mmin, mmax, vmin, vmax;
 double  gravity, rebound, transfer;
 } SIMULATION;
 
@@ -168,6 +168,10 @@ COALESCE    coalesce[8];
 	simulation->gravity = gravity;
 	simulation->rebound = rebound;
 	simulation->transfer = transfer;
+	simulation->mmin = mmin;
+	simulation->mmax = mmax;
+	simulation->vmin = vmin;
+	simulation->vmax = vmax;
 	simulation->bc = 0;
 	simulation->pc = 0;
 
@@ -269,7 +273,7 @@ printf("COLLISION    e = %4d  %4d/%d and %4d/%d\n",
 
                         bc(m1, m2, d, &frame[f1], &frame[f2], rebound, transfer);
                         d = distance(&frame[f1], &frame[f2]);
-                        if (1.03 * d < r1 + r2) // coalescence
+                        if (d < r1 + r2) // coalescence
                         {
                             coalesce[nb_coalesce].m1 = m1;
                             coalesce[nb_coalesce].m2 = m2;
@@ -368,7 +372,7 @@ char	bufr[4], bufg[4], bufb[4];
 int save_simulation(PGconn *pgConn, SIMULATION *ps)
 {
 char	buffer[16];
-int sid = insertSimulation(pgConn, ps->epochs, ps->frames, ps->gravity, ps->rebound, ps->transfer);
+int sid = insertSimulation(pgConn, ps->epochs, ps->frames, ps->gravity, ps->rebound, ps->transfer, ps->mmin, ps->mmax, ps->vmin, ps->vmax, ps->bc, ps->pc);
 
 	for (int f = 0 ; f < ps->frames ; f++)
 		insertFrame(pgConn, sid, frame[f].epoch, frame[f].pid, frame[f].x, frame[f].y, sqrt(planet[frame[f].pid].mass),
@@ -402,9 +406,13 @@ PGconn *pgConn = NULL;
 	if (argc > 4)
 		transfer = atof(argv[4]);
 	if (argc > 5)
-		m2 = atoi(argv[5]);
+		m1 = atoi(argv[5]);
 	if (argc > 6)
-		v2 = atoi(argv[6]);
+		m2 = atoi(argv[6]);
+	if (argc > 7)
+		v1 = atoi(argv[7]);
+	if (argc > 8)
+		v2 = atoi(argv[8]);
 
 	pgConn = pgOpenConn("g4", "g4", "", buffer);
 	printf("database connection     = %p\n", pgConn);
