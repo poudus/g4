@@ -21,7 +21,9 @@ double pgGetDouble(PGconn *pgConn, const char *pQuery);
 
 char *formatTS(long long ts, char *buffer);
 
-int insertSimulation(PGconn *pgConn, int epochs, int frames, double gravity, double rebound, double transfer, int mmin, int mmax, int vmin, int vmax, int bc, int pc);
+int insertSimulation(PGconn *pgConn, int epochs, int frames,
+                     double gravity, double rebound, double transfer, double factor, double cf1, double cf2,
+                     int mmin, int mmax, int vmin, int vmax, int bc, int pc, int score);
 bool insertFrame(PGconn *pgConn, int sid, int epoch, int pid, int x, int y, double radius, const char *color);
 
 
